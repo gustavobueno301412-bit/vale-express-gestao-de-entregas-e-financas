@@ -133,11 +133,11 @@
         </div>
       </div>
 
-      <!-- Botão de Envio de Fechamento via WhatsApp -->
+      <!-- Botão de Envio de Fechamento via WhatsApp (Abre direto a lista de conversas para escolher o contato) -->
       <div class="mb-4 text-center" id="blocoEnvioFechamento" style="display: none;">
-        <button class="btn btn-success btn-lg shadow-sm w-100" onclick="enviarFechamentoMotoboy()">
+        <a id="linkEnvioFechamento" href="#" target="_blank" class="btn btn-success btn-lg shadow-sm w-100 text-decoration-none">
           📲 Enviar Fechamento do Período para o Motoboy no WhatsApp
-        </button>
+        </a>
       </div>
 
       <!-- Área do Gráfico -->
@@ -429,6 +429,10 @@
       atualizarGrafico(filtrados, motoboyFiltro);
     
       document.getElementById("blocoEnvioFechamento").style.display = motoboyFiltro ? "block" : "none";
+     
+      if (motoboyFiltro) {
+        atualizarLinkFechamento(filtrados, motoboyFiltro, dtInicio, dtFim);
+      }
     }
 
     function atualizarInterfaceHistorico(lista) {
@@ -540,38 +544,8 @@
       aplicarFiltrosECharts();
     }
 
-    function enviarFechamentoMotoboy() {
-      let motoboyFiltro = document.getElementById("filtroMotoboy").value;
-      let dtInicio = document.getElementById("filtroDataInicio").value;
-      let dtFim = document.getElementById("filtroDataFim").value;
-
-      if (!motoboyFiltro) {
-        alert("Por favor, selecione um Motoboy específico no filtro antes de enviar o fechamento.");
-        return;
-      }
-
-      let filtrados = historicoGlobal.filter(item => {
-        let matchMotoboy = item.motoboy === motoboyFiltro;
-        let matchData = true;
-        if (dtInicio || dtFim) {
-          let p = item.data.split('/');
-          let dataIso = `${p[2]}-${p[1]}-${p[0]}`;
-          if (dtInicio && dataIso < dtInicio) matchData = false;
-          if (dtFim && dataIso > dtFim) matchData = false;
-        }
-        return matchMotoboy && matchData;
-      });
-
-      if (filtrados.length === 0) {
-        alert("Nenhuma corrida encontrada para este motoboy no período selecionado.");
-        return;
-      }
-
-      let foneMotoboy = "";
-      let objMotoboy = listaMotoboysGlobal.find(m => m.nome === motoboyFiltro);
-      if (objMotoboy && objMotoboy.whatsapp) {
-        foneMotoboy = objMotoboy.whatsapp.replace(/\D/g, '');
-      }
+    function atualizarLinkFechamento(filtrados, motoboyFiltro, dtInicio, dtFim) {
+      if (filtrados.length === 0) return;
 
       let texto = `*RESUMO DE FECHAMENTO DE CORRIDAS* 📋🛵\n\n`;
       texto += `👤 *Motoboy:* ${motoboyFiltro}\n`;
@@ -595,19 +569,10 @@
 
       let encoded = encodeURIComponent(texto);
      
-      // Monta o link garantindo o DDI 55 do Brasil se já não tiver
-      let linkZap = "";
-      if (foneMotoboy) {
-        if (!foneMotoboy.startsWith("55") && foneMotoboy.length <= 11) {
-          foneMotoboy = "55" + foneMotoboy;
-        }
-        linkZap = `https://wa.me/${foneMotoboy}?text=${encoded}`;
-      } else {
-        linkZap = `https://wa.me/?text=${encoded}`;
-      }
+      // Abre o WhatsApp livre para você selecionar o contato na lista
+      let linkZap = `https://wa.me/?text=${encoded}`;
 
-      // Abre a janela do WhatsApp de forma segura
-      window.open(linkZap, '_blank');
+      document.getElementById("linkEnvioFechamento").href = linkZap;
     }
   </script>
 </body>
