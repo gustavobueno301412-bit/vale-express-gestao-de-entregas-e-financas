@@ -20,14 +20,14 @@
 
     <!-- Botão de Navegação Superior -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3 class="text-primary m-0">🛵 Controle de Entregas - Vale Express 🛵</h3>
+      <h3 class="text-primary m-0">🛵 Controle de Entregas - Vale Express</h3>
       <button class="btn btn-outline-primary btn-sm" onclick="abrirHistorico()" id="btnMenuHistorico">📊 Ver Histórico e Gráficos</button>
     </div>
 
     <!-- TELA 1: FORMULÁRIO DE CADASTRO -->
     <div id="formulario" class="card p-4">
       <h4 class="mb-4 text-secondary">📝 Novo Pedido de Entrega</h4>
-  
+
       <div id="loading" class="text-center py-4">
         <div class="spinner-border text-primary" role="status"></div>
         <p class="mt-2 text-muted">Carregando dados da planilha...</p>
@@ -95,7 +95,7 @@
     <!-- TELA 2: HISTÓRICO, FILTROS E GRÁFICOS -->
     <div id="secaoHistorico" class="card p-4 mt-3" style="display: none;">
       <h4 class="mb-4 text-primary text-center">📊 Histórico, Fechamento e Gráficos</h4>
-  
+
       <!-- Filtros -->
       <div class="row g-3 mb-4 bg-light p-3 rounded">
         <div class="col-md-4">
@@ -133,7 +133,7 @@
         </div>
       </div>
 
-      <!-- Botão de Envio de Fechamento via WhatsApp (Aparece apenas quando filtra por motoboy) -->
+      <!-- Botão de Envio de Fechamento via WhatsApp -->
       <div class="mb-4 text-center" id="blocoEnvioFechamento" style="display: none;">
         <button class="btn btn-success btn-lg shadow-sm w-100" onclick="enviarFechamentoMotoboy()">
           📲 Enviar Fechamento do Período para o Motoboy no WhatsApp
@@ -157,7 +157,7 @@
               <th>🕒 Hora</th>
               <th>🏢 Cliente</th>
               <th>📍 Retirada</th>
-              <th>🎯 Destino</th>
+              <th>🎯 Destino / Endereço</th>
               <th>🛵 Motoboy</th>
               <th>💵 Valor</th>
               <th>💳 Pagamento</th>
@@ -195,7 +195,7 @@
         if (dados.status === "sucesso") {
           listaMotoboysGlobal = dados.motoboys;
           listaEnderecosGlobal = dados.enderecos;
-      
+    
           let selectM = document.getElementById("selectMotoboy");
           dados.motoboys.forEach(m => {
             if(m.status.toLowerCase() !== "inativo") {
@@ -232,9 +232,9 @@
           <span class="fw-bold text-muted">Entrega #${index}</span>
           ${index > 1 ? '<button type="button" class="btn-close btn-sm" aria-label="Remover" onclick="removerCampoDestino(this)"></button>' : ''}
         </div>
-        <div class="row g-2">
+        <div class="row g-2 mb-2">
           <div class="col-md-8">
-            <label class="form-label small">Bairro / Destino:</label>
+            <label class="form-label small">Bairro / Destino (Planilha):</label>
             <select class="form-select form-select-sm select-destino" onchange="preencherValor(this)">
               <option value="">Selecione o Bairro...</option>
               ${listaEnderecosGlobal.map(e => `<option value="${e.bairro}" data-valor="${e.valor}">${e.bairro} (R$ ${e.valor})</option>`).join('')}
@@ -243,6 +243,12 @@
           <div class="col-md-4">
             <label class="form-label small">Valor (R$):</label>
             <input type="number" step="0.01" class="form-control form-control-sm input-valor" placeholder="0.00">
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label small fw-bold text-primary">📍 Endereço / Número de Destino:</label>
+            <input type="text" class="form-control form-control-sm input-endereco-detalhado" placeholder="Ex: Rua das Flores, 123 - Próximo à praça">
           </div>
         </div>
       `;
@@ -279,14 +285,19 @@
       let listaEntregas = [];
 
       for (let i = 0; i < itensDivs.length; i++) {
-        let destino = itensDivs[i].querySelector(".select-destino").value;
+        let bairroSelecionado = itensDivs[i].querySelector(".select-destino").value;
+        let enderecoDetalhado = itensDivs[i].querySelector(".input-endereco-detalhado").value.trim();
         let valor = itensDivs[i].querySelector(".input-valor").value;
 
-        if (!destino || !valor) {
-          alert(`Preencha o destino e o valor da Entrega #${i + 1}.`);
+        if (!bairroSelecionado || !valor) {
+          alert(`Preencha o bairro e o valor da Entrega #${i + 1}.`);
           return;
         }
-        listaEntregas.push({ destino: destino, valor: parseFloat(valor).toFixed(2) });
+
+        // Junta o bairro com o endereço específico digitado para salvar completo
+        let destinoCompleto = enderecoDetalhado ? `${bairroSelecionado} - ${enderecoDetalhado}` : bairroSelecionado;
+
+        listaEntregas.push({ destino: destinoCompleto, valor: parseFloat(valor).toFixed(2) });
       }
 
       let agora = new Date();
@@ -333,13 +344,13 @@
       texto += `💳 *Pagamento:* ${geral.formaPagamento}\n`;
       texto += `🕒 *Horário:* ${geral.data} às ${geral.hora}\n\n`;
       texto += `*Destinos:* \n`;
-  
+
       let totalGeral = 0;
       entregas.forEach((e, i) => {
         texto += `${i + 1}. ${e.destino} - R$ ${e.valor}\n`;
         totalGeral += parseFloat(e.valor);
       });
-  
+
       texto += `\n💰 *Total da Corrida:* R$ ${totalGeral.toFixed(2)}`;
 
       let encoded = encodeURIComponent(texto);
@@ -353,7 +364,7 @@
       document.getElementById("selectMotoboy").selectedIndex = 0;
       document.getElementById("listaDestinos").innerHTML = "";
       adicionarCampoDestino();
-  
+
       document.getElementById("sucessoEnvio").style.display = "none";
       document.getElementById("formulario").style.display = "block";
       document.getElementById("btnMenuHistorico").style.display = "block";
@@ -363,7 +374,7 @@
       document.getElementById("formulario").style.display = "none";
       document.getElementById("sucessoEnvio").style.display = "none";
       document.getElementById("secaoHistorico").style.display = "block";
-  
+
       fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
         body: JSON.stringify({ acao: "carregarHistorico" })
@@ -405,7 +416,7 @@
       let filtrados = historicoGlobal.filter(item => {
         let matchMotoboy = !motoboyFiltro || item.motoboy === motoboyFiltro;
         let matchData = true;
-    
+  
         if (dtInicio || dtFim) {
           let p = item.data.split('/');
           let dataIso = `${p[2]}-${p[1]}-${p[0]}`;
@@ -417,8 +428,7 @@
 
       atualizarInterfaceHistorico(filtrados);
       atualizarGrafico(filtrados, motoboyFiltro);
-     
-      // Controla a exibição do botão de fechamento para o motoboy selecionado
+    
       document.getElementById("blocoEnvioFechamento").style.display = motoboyFiltro ? "block" : "none";
     }
 
