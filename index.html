@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controle de Entregas - Vale Express 🛵</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Chart.js para os gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background-color: #f8f9fa; padding-top: 20px; padding-bottom: 40px; }
+    .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; border-radius: 10px; }
+    .destino-item { background: #fff; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin-bottom: 10px; position: relative; }
+  </style>
+</head>
+<body>
+
+  <div class="container" style="max-width: 950px;">
+
+    <!-- Botão de Navegação Superior -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="text-primary m-0">🛵 Controle de Entregas - Vale Express 🛵</h3>
+      <button class="btn btn-outline-primary btn-sm" onclick="abrirHistorico()" id="btnMenuHistorico">📊 Ver Histórico e Gráficos</button>
+    </div>
+
+    <!-- TELA 1: FORMULÁRIO DE CADASTRO -->
+    <div id="formulario" class="card p-4">
+      <h4 class="mb-4 text-secondary">📝 Novo Pedido de Entrega</h4>
+  
+      <div id="loading" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Carregando dados da planilha...</p>
+      </div>
+
+      <div id="conteudoForm" style="display: none;">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">🏢 Cliente / Empresa:</label>
+            <input type="text" id="cliente" class="form-control" placeholder="Ex: McDonald's, Oficina...">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">📍 Local de Retirada:</label>
+            <input type="text" id="retirada" class="form-control" placeholder="Endereço ou local de busca">
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">🛵 Motoboy:</label>
+            <select id="selectMotoboy" class="form-select" onchange="atualizarWhatsApp()">
+              <option value="">Selecione o Motoboy...</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">💳 Forma de Pagamento:</label>
+            <select id="formaPagamento" class="form-select">
+              <option value="Dinheiro">Dinheiro 💰</option>
+              <option value="PIX">PIX 🔑</option>
+              <option value="Cartão">Cartão 💳</option>
+              <option value="Faturado / Empresa">Faturado / Empresa 🏭</option>
+            </select>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <h5 class="mb-3 text-secondary">📦 Destinos e Entregas</h5>
+        <div id="listaDestinos"></div>
+
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-4" onclick="adicionarCampoDestino()">
+          ➕ Adicionar Outro Destino (Mesma Retirada)
+        </button>
+
+        <div class="d-grid">
+          <button type="button" class="btn btn-success btn-lg" onclick="salvarPedido()">💾 Salvar Pedido e Gerar Envio</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA DE SUCESSO / WHATSAPP -->
+    <div id="sucessoEnvio" class="card p-4 text-center" style="display: none;">
+      <div class="alert alert-success" role="alert">
+        <h4 class="alert-heading">Pedido Salvo com Sucesso! 🎉</h4>
+        <p>As entregas foram registradas na aba Histórico da planilha.</p>
+      </div>
+      <div class="d-grid gap-2 col-md-8 mx-auto mt-4">
+        <a id="btnWhatsApp" href="#" target="_blank" class="btn btn-primary btn-lg">
+          📲 Enviar Pedido para o Motoboy no WhatsApp
+        </a>
+        <button class="btn btn-outline-secondary" onclick="limparEReiniciar()">Cadastrar Novo Pedido</button>
+      </div>
+    </div>
+
+    <!-- TELA 2: HISTÓRICO, FILTROS E GRÁFICOS -->
+    <div id="secaoHistorico" class="card p-4 mt-3" style="display: none;">
+      <h4 class="mb-4 text-primary text-center">📊 Histórico, Fechamento e Gráficos</h4>
+  
+      <!-- Filtros -->
+      <div class="row g-3 mb-4 bg-light p-3 rounded">
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">🔍 Filtrar por Motoboy:</label>
+          <select id="filtroMotoboy" class="form-select form-select-sm" onchange="aplicarFiltrosECharts()">
+            <option value="">Todos os Motoboys</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold">📅 Data Início:</label>
+          <input type="date" id="filtroDataInicio" class="form-control form-control-sm" onchange="aplicarFiltrosECharts()">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold">📅 Data Fim:</label>
+          <input type="date" id="filtroDataFim" class="form-control form-control-sm" onchange="aplicarFiltrosECharts()">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="limparFiltros()">🔄 Limpar</button>
+        </div>
+      </div>
+
+      <!-- Cards de Resumo -->
+      <div class="row text-center mb-4">
+        <div class="col-md-6 mb-2">
+          <div class="p-3 border bg-white rounded shadow-sm">
+            <span class="text-muted small d-block">🖨️ TOTAL EM VALORES (PERÍODO)</span>
+            <h3 id="totalValorGeral" class="text-success fw-bold">R$ 0,00</h3>
+          </div>
+        </div>
+        <div class="col-md-6 mb-2">
+          <div class="p-3 border bg-white rounded shadow-sm">
+            <span class="text-muted small d-block">🛵 TOTAL DE CORRIDAS</span>
+            <h3 id="totalQtdCorridas" class="text-primary fw-bold">0</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botão de Envio de Fechamento via WhatsApp (Aparece apenas quando filtra por motoboy) -->
+      <div class="mb-4 text-center" id="blocoEnvioFechamento" style="display: none;">
+        <button class="btn btn-success btn-lg shadow-sm w-100" onclick="enviarFechamentoMotoboy()">
+          📲 Enviar Fechamento do Período para o Motoboy no WhatsApp
+        </button>
+      </div>
+
+      <!-- Área do Gráfico -->
+      <div class="card p-3 mb-4 shadow-sm">
+        <h6 class="text-secondary text-center">📈 Desempenho no Período</h6>
+        <div style="position: relative; height: 220px; width: 100%;">
+          <canvas id="graficoDesempenho"></canvas>
+        </div>
+      </div>
+
+      <!-- Tabela Detalhada -->
+      <div class="table-responsive mb-3" style="max-height: 280px; overflow-y: auto;">
+        <table class="table table-striped table-hover table-sm">
+          <thead class="table-dark sticky-top">
+            <tr>
+              <th>📅 Data</th>
+              <th>🕒 Hora</th>
+              <th>🏢 Cliente</th>
+              <th>📍 Retirada</th>
+              <th>🎯 Destino</th>
+              <th>🛵 Motoboy</th>
+              <th>💵 Valor</th>
+              <th>💳 Pagamento</th>
+              <th class="text-center">⚙️ Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaHistoricoBody"></tbody>
+        </table>
+      </div>
+
+      <div class="text-center">
+        <button class="btn btn-secondary" onclick="voltarParaCadastro()">⬅ Voltar para Cadastrar Pedido</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Script Geral -->
+  <script>
+    const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwj_czm1gsjiv9gn3XSQoUJTpJPVu1h4fREL2RbNfuIMs-DgTORjoBVyanzFFLXMisCFw/exec";
+
+    let listaEnderecosGlobal = [];
+    let listaMotoboysGlobal = [];
+    let whatsappMotoboySelecionado = "";
+    let historicoGlobal = [];
+    let meuGrafico = null;
+
+    window.onload = function() {
+      fetch(URL_GOOGLE_SCRIPT, {
+        method: 'POST',
+        body: JSON.stringify({ acao: "carregarDados" })
+      })
+      .then(response => response.json())
+      .then(dados => {
+        if (dados.status === "sucesso") {
+          listaMotoboysGlobal = dados.motoboys;
+          listaEnderecosGlobal = dados.enderecos;
+      
+          let selectM = document.getElementById("selectMotoboy");
+          dados.motoboys.forEach(m => {
+            if(m.status.toLowerCase() !== "inativo") {
+              let opt = document.createElement("option");
+              opt.value = m.nome;
+              opt.setAttribute("data-zap", m.whatsapp);
+              opt.textContent = m.nome;
+              selectM.appendChild(opt);
+            }
+          });
+
+          adicionarCampoDestino();
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("conteudoForm").style.display = "block";
+        }
+      })
+      .catch(error => console.error("Erro ao carregar dados:", error));
+    };
+
+    function atualizarWhatsApp() {
+      let select = document.getElementById("selectMotoboy");
+      let opt = select.options[select.selectedIndex];
+      whatsappMotoboySelecionado = opt.getAttribute("data-zap") || "";
+    }
+
+    function adicionarCampoDestino() {
+      let container = document.getElementById("listaDestinos");
+      let index = container.children.length + 1;
+
+      let div = document.createElement("div");
+      div.className = "destino-item";
+      div.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="fw-bold text-muted">Entrega #${index}</span>
+          ${index > 1 ? '<button type="button" class="btn-close btn-sm" aria-label="Remover" onclick="removerCampoDestino(this)"></button>' : ''}
+        </div>
+        <div class="row g-2">
+          <div class="col-md-8">
+            <label class="form-label small">Bairro / Destino:</label>
+            <select class="form-select form-select-sm select-destino" onchange="preencherValor(this)">
+              <option value="">Selecione o Bairro...</option>
+              ${listaEnderecosGlobal.map(e => `<option value="${e.bairro}" data-valor="${e.valor}">${e.bairro} (R$ ${e.valor})</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Valor (R$):</label>
+            <input type="number" step="0.01" class="form-control form-control-sm input-valor" placeholder="0.00">
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+    }
+
+    function removerCampoDestino(btn) {
+      btn.closest(".destino-item").remove();
+      let itens = document.querySelectorAll(".destino-item");
+      itens.forEach((item, idx) => {
+        item.querySelector("span").textContent = `Entrega #${idx + 1}`;
+      });
+    }
+
+    function preencherValor(selectEl) {
+      let opt = selectEl.options[selectEl.selectedIndex];
+      let valor = opt.getAttribute("data-valor") || "";
+      let itemDiv = selectEl.closest(".destino-item");
+      itemDiv.querySelector(".input-valor").value = valor;
+    }
+
+    function salvarPedido() {
+      let cliente = document.getElementById("cliente").value.trim();
+      let retirada = document.getElementById("retirada").value.trim();
+      let nomeMotoboy = document.getElementById("selectMotoboy").value;
+      let formaPagamento = document.getElementById("formaPagamento").value;
+
+      if (!cliente || !retirada || !nomeMotoboy) {
+        alert("Por favor, preencha o Cliente, o Local de Retirada e escolha o Motoboy.");
+        return;
+      }
+
+      let itensDivs = document.querySelectorAll(".destino-item");
+      let listaEntregas = [];
+
+      for (let i = 0; i < itensDivs.length; i++) {
+        let destino = itensDivs[i].querySelector(".select-destino").value;
+        let valor = itensDivs[i].querySelector(".input-valor").value;
+
+        if (!destino || !valor) {
+          alert(`Preencha o destino e o valor da Entrega #${i + 1}.`);
+          return;
+        }
+        listaEntregas.push({ destino: destino, valor: parseFloat(valor).toFixed(2) });
+      }
+
+      let agora = new Date();
+      let dataStr = agora.toLocaleDateString("pt-BR");
+      let horaStr = agora.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+
+      let dadosGerais = {
+        cliente: cliente,
+        retirada: retirada,
+        nomeMotoboy: nomeMotoboy,
+        formaPagamento: formaPagamento,
+        data: dataStr,
+        hora: horaStr
+      };
+
+      fetch(URL_GOOGLE_SCRIPT, {
+        method: 'POST',
+        body: JSON.stringify({
+          acao: "salvarPedido",
+          dadosGerais: dadosGerais,
+          listaEntregas: listaEntregas
+        })
+      })
+      .then(response => response.json())
+      .then(res => {
+        if (res.status === "sucesso") {
+          prepararBotaoWhatsApp(dadosGerais, listaEntregas);
+          document.getElementById("formulario").style.display = "none";
+          document.getElementById("sucessoEnvio").style.display = "block";
+          document.getElementById("btnMenuHistorico").style.display = "none";
+        }
+      })
+      .catch(error => {
+        console.error("Erro ao salvar:", error);
+        alert("Ocorreu um erro ao salvar o pedido.");
+      });
+    }
+
+    function prepararBotaoWhatsApp(geral, entregas) {
+      let fone = whatsappMotoboySelecionado.replace(/\D/g, '');
+      let texto = `*NOVO PEDIDO DE ENTREGA* 🛵\n\n`;
+      texto += `👤 *Cliente:* ${geral.cliente}\n`;
+      texto += `📍 *Retirada:* ${geral.retirada}\n`;
+      texto += `💳 *Pagamento:* ${geral.formaPagamento}\n`;
+      texto += `🕒 *Horário:* ${geral.data} às ${geral.hora}\n\n`;
+      texto += `*Destinos:* \n`;
+  
+      let totalGeral = 0;
+      entregas.forEach((e, i) => {
+        texto += `${i + 1}. ${e.destino} - R$ ${e.valor}\n`;
+        totalGeral += parseFloat(e.valor);
+      });
+  
+      texto += `\n💰 *Total da Corrida:* R$ ${totalGeral.toFixed(2)}`;
+
+      let encoded = encodeURIComponent(texto);
+      let linkZap = fone ? `https://wa.me/55${fone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+      document.getElementById("btnWhatsApp").href = linkZap;
+    }
+
+    function limparEReiniciar() {
+      document.getElementById("cliente").value = "";
+      document.getElementById("retirada").value = "";
+      document.getElementById("selectMotoboy").selectedIndex = 0;
+      document.getElementById("listaDestinos").innerHTML = "";
+      adicionarCampoDestino();
+  
+      document.getElementById("sucessoEnvio").style.display = "none";
+      document.getElementById("formulario").style.display = "block";
+      document.getElementById("btnMenuHistorico").style.display = "block";
+    }
+
+    function abrirHistorico() {
+      document.getElementById("formulario").style.display = "none";
+      document.getElementById("sucessoEnvio").style.display = "none";
+      document.getElementById("secaoHistorico").style.display = "block";
+  
+      fetch(URL_GOOGLE_SCRIPT, {
+        method: 'POST',
+        body: JSON.stringify({ acao: "carregarHistorico" })
+      })
+      .then(res => res.json())
+      .then(dados => {
+        if (dados.status === "sucesso") {
+          historicoGlobal = dados.registros;
+          popularFiltroMotoboys();
+          aplicarFiltrosECharts();
+        }
+      });
+    }
+
+    function voltarParaCadastro() {
+      document.getElementById("secaoHistorico").style.display = "none";
+      document.getElementById("formulario").style.display = "block";
+    }
+
+    function popularFiltroMotoboys() {
+      let select = document.getElementById("filtroMotoboy");
+      select.innerHTML = '<option value="">Todos os Motoboys</option>';
+      let unicos = [...new Set(historicoGlobal.map(item => item.motoboy))];
+      unicos.forEach(nome => {
+        if (nome) {
+          let opt = document.createElement("option");
+          opt.value = nome;
+          opt.textContent = nome;
+          select.appendChild(opt);
+        }
+      });
+    }
+
+    function aplicarFiltrosECharts() {
+      let motoboyFiltro = document.getElementById("filtroMotoboy").value;
+      let dtInicio = document.getElementById("filtroDataInicio").value;
+      let dtFim = document.getElementById("filtroDataFim").value;
+
+      let filtrados = historicoGlobal.filter(item => {
+        let matchMotoboy = !motoboyFiltro || item.motoboy === motoboyFiltro;
+        let matchData = true;
+    
+        if (dtInicio || dtFim) {
+          let p = item.data.split('/');
+          let dataIso = `${p[2]}-${p[1]}-${p[0]}`;
+          if (dtInicio && dataIso < dtInicio) matchData = false;
+          if (dtFim && dataIso > dtFim) matchData = false;
+        }
+        return matchMotoboy && matchData;
+      });
+
+      atualizarInterfaceHistorico(filtrados);
+      atualizarGrafico(filtrados, motoboyFiltro);
+     
+      // Controla a exibição do botão de fechamento para o motoboy selecionado
+      document.getElementById("blocoEnvioFechamento").style.display = motoboyFiltro ? "block" : "none";
+    }
+
+    function atualizarInterfaceHistorico(lista) {
+      let tbody = document.getElementById("tabelaHistoricoBody");
+      tbody.innerHTML = "";
+      let soma = 0;
+
+      lista.forEach(item => {
+        soma += item.valor;
+
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.data || ''}</td>
+          <td>${item.hora || '00:00'}</td>
+          <td>${item.cliente}</td>
+          <td>${item.retirada}</td>
+          <td>${item.destino}</td>
+          <td><b>${item.motoboy}</b></td>
+          <td>R$ ${item.valor.toFixed(2)}</td>
+          <td>${item.formaPagamento}</td>
+          <td class="text-center">
+            <button class="btn btn-outline-danger btn-sm" onclick="excluirCorrida(${item.linhaPlanilha})" title="Apagar esta corrida">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("totalValorGeral").textContent = `R$ ${soma.toFixed(2)}`;
+      document.getElementById("totalQtdCorridas").textContent = lista.length;
+    }
+
+    function excluirCorrida(linhaPlanilha) {
+      if (confirm("Realmente deseja apagar este histórico?")) {
+        fetch(URL_GOOGLE_SCRIPT, {
+          method: 'POST',
+          body: JSON.stringify({
+            acao: "excluirRegistro",
+            linhaPlanilha: linhaPlanilha
+          })
+        })
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === "sucesso") {
+            abrirHistorico();
+          } else {
+            alert("Erro ao excluir: " + res.mensagem);
+          }
+        })
+        .catch(err => {
+          console.error("Erro:", err);
+          alert("Erro de comunicação ao tentar excluir.");
+        });
+      }
+    }
+
+    function atualizarGrafico(lista, motoboySelecionado) {
+      let ctx = document.getElementById('graficoDesempenho').getContext('2d');
+      let rotulos = [];
+      let valores = [];
+
+      if (!motoboySelecionado) {
+        let totaisPorMotoboy = {};
+        lista.forEach(item => {
+          let m = item.motoboy || "Desconhecido";
+          totaisPorMotoboy[m] = (totaisPorMotoboy[m] || 0) + item.valor;
+        });
+        rotulos = Object.keys(totaisPorMotoboy);
+        valores = Object.values(totaisPorMotoboy);
+      } else {
+        let totaisPorData = {};
+        lista.forEach(item => {
+          let d = item.data;
+          totaisPorData[d] = (totaisPorData[d] || 0) + item.valor;
+        });
+        rotulos = Object.keys(totaisPorData);
+        valores = Object.values(totaisPorData);
+      }
+
+      if (meuGrafico) {
+        meuGrafico.destroy();
+      }
+
+      meuGrafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: rotulos,
+          datasets: [{
+            label: 'Valor Total (R$)',
+            data: valores,
+            backgroundColor: 'rgba(13, 110, 253, 0.7)',
+            borderColor: 'rgba(13, 110, 253, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function limparFiltros() {
+      document.getElementById("filtroMotoboy").value = "";
+      document.getElementById("filtroDataInicio").value = "";
+      document.getElementById("filtroDataFim").value = "";
+      aplicarFiltrosECharts();
+    }
+
+    function enviarFechamentoMotoboy() {
+      let motoboyFiltro = document.getElementById("filtroMotoboy").value;
+      let dtInicio = document.getElementById("filtroDataInicio").value;
+      let dtFim = document.getElementById("filtroDataFim").value;
+
+      if (!motoboyFiltro) {
+        alert("Por favor, selecione um Motoboy específico no filtro antes de enviar o fechamento.");
+        return;
+      }
+
+      let filtrados = historicoGlobal.filter(item => {
+        let matchMotoboy = item.motoboy === motoboyFiltro;
+        let matchData = true;
+        if (dtInicio || dtFim) {
+          let p = item.data.split('/');
+          let dataIso = `${p[2]}-${p[1]}-${p[0]}`;
+          if (dtInicio && dataIso < dtInicio) matchData = false;
+          if (dtFim && dataIso > dtFim) matchData = false;
+        }
+        return matchMotoboy && matchData;
+      });
+
+      if (filtrados.length === 0) {
+        alert("Nenhuma corrida encontrada para este motoboy no período selecionado.");
+        return;
+      }
+
+      let foneMotoboy = "";
+      let objMotoboy = listaMotoboysGlobal.find(m => m.nome === motoboyFiltro);
+      if (objMotoboy && objMotoboy.whatsapp) {
+        foneMotoboy = objMotoboy.whatsapp.replace(/\D/g, '');
+      }
+
+      let texto = `*RESUMO DE FECHAMENTO DE CORRIDAS* 📋🛵\n\n`;
+      texto += `👤 *Motoboy:* ${motoboyFiltro}\n`;
+      if (dtInicio && dtFim) {
+        texto += `📅 *Período:* ${dtInicio.split('-').reverse().join('/')} até ${dtFim.split('-').reverse().join('/')}\n`;
+      }
+      texto += `----------------------------------\n`;
+      texto += `*Suas Entregas Realizadas:* \n\n`;
+
+      let totalGeral = 0;
+      filtrados.forEach((item, index) => {
+        texto += `${index + 1}. Data: ${item.data} (${item.hora})\n`;
+        texto += `   🏢 ${item.cliente} ➡️ ${item.destino}\n`;
+        texto += `   💵 R$ ${item.valor.toFixed(2)} [${item.formaPagamento}]\n\n`;
+        totalGeral += item.valor;
+      });
+
+      texto += `----------------------------------\n`;
+      texto += `💰 *TOTAL A RECEBER: R$ ${totalGeral.toFixed(2)}*\n`;
+      texto += `_Qualquer dúvida, estou à disposição!_`;
+
+      let encoded = encodeURIComponent(texto);
+      let linkZap = foneMotoboy ? `https://wa.me/55${foneMotoboy}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+      window.open(linkZap, '_blank');
+    }
+  </script>
+</body>
+</html>
+
+ 
