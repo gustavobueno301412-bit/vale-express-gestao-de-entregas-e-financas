@@ -294,7 +294,6 @@
           return;
         }
 
-        // Junta o bairro com o endereço específico digitado para salvar completo
         let destinoCompleto = enderecoDetalhado ? `${bairroSelecionado} - ${enderecoDetalhado}` : bairroSelecionado;
 
         listaEntregas.push({ destino: destinoCompleto, valor: parseFloat(valor).toFixed(2) });
@@ -595,7 +594,19 @@
       texto += `_Qualquer dúvida, estou à disposição!_`;
 
       let encoded = encodeURIComponent(texto);
-      let linkZap = foneMotoboy ? `https://wa.me/55${foneMotoboy}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+     
+      // Monta o link garantindo o DDI 55 do Brasil se já não tiver
+      let linkZap = "";
+      if (foneMotoboy) {
+        if (!foneMotoboy.startsWith("55") && foneMotoboy.length <= 11) {
+          foneMotoboy = "55" + foneMotoboy;
+        }
+        linkZap = `https://wa.me/${foneMotoboy}?text=${encoded}`;
+      } else {
+        linkZap = `https://wa.me/?text=${encoded}`;
+      }
+
+      // Abre a janela do WhatsApp de forma segura
       window.open(linkZap, '_blank');
     }
   </script>
