@@ -54,7 +54,7 @@
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold">💳 Forma de Pagamento:</label>
-            <select id="formaPagamento" class="form-select">
+            <select id="formaPagamento" class="form-select" onchange="verificarFormaPagamento()">
               <option value="Dinheiro">Dinheiro 💰</option>
               <option value="PIX">PIX 🔑</option>
               <option value="Cartão">Cartão 💳</option>
@@ -133,7 +133,7 @@
         </div>
       </div>
 
-      <!-- Botão de Envio de Fechamento via WhatsApp (Abre direto a lista de conversas para escolher o contato) -->
+      <!-- Botão de Envio de Fechamento via WhatsApp -->
       <div class="mb-4 text-center" id="blocoEnvioFechamento" style="display: none;">
         <a id="linkEnvioFechamento" href="#" target="_blank" class="btn btn-success btn-lg shadow-sm w-100 text-decoration-none">
           📲 Enviar Fechamento do Período para o Motoboy no WhatsApp
@@ -195,7 +195,7 @@
         if (dados.status === "sucesso") {
           listaMotoboysGlobal = dados.motoboys;
           listaEnderecosGlobal = dados.enderecos;
-    
+  
           let selectM = document.getElementById("selectMotoboy");
           dados.motoboys.forEach(m => {
             if(m.status.toLowerCase() !== "inativo") {
@@ -253,6 +253,7 @@
         </div>
       `;
       container.appendChild(div);
+      verificarFormaPagamento();
     }
 
     function removerCampoDestino(btn) {
@@ -267,7 +268,31 @@
       let opt = selectEl.options[selectEl.selectedIndex];
       let valor = opt.getAttribute("data-valor") || "";
       let itemDiv = selectEl.closest(".destino-item");
-      itemDiv.querySelector(".input-valor").value = valor;
+     
+      let formaPagamento = document.getElementById("formaPagamento").value;
+      if (formaPagamento === "Dinheiro") {
+        itemDiv.querySelector(".input-valor").value = "0.00";
+      } else {
+        itemDiv.querySelector(".input-valor").value = valor;
+      }
+    }
+
+    function verificarFormaPagamento() {
+      let formaPagamento = document.getElementById("formaPagamento").value;
+      let itensDivs = document.querySelectorAll(".destino-item");
+     
+      itensDivs.forEach(itemDiv => {
+        let inputValor = itemDiv.querySelector(".input-valor");
+        let selectDestino = itemDiv.querySelector(".select-destino");
+       
+        if (formaPagamento === "Dinheiro") {
+          inputValor.value = "0.00";
+        } else {
+          let opt = selectDestino.options[selectDestino.selectedIndex];
+          let valor = opt ? opt.getAttribute("data-valor") || "" : "";
+          inputValor.value = valor;
+        }
+      });
     }
 
     function salvarPedido() {
@@ -289,14 +314,15 @@
         let enderecoDetalhado = itensDivs[i].querySelector(".input-endereco-detalhado").value.trim();
         let valor = itensDivs[i].querySelector(".input-valor").value;
 
-        if (!bairroSelecionado || !valor) {
+        if (!bairroSelecionado || valor === "") {
           alert(`Preencha o bairro e o valor da Entrega #${i + 1}.`);
           return;
         }
 
+        let valorFinal = formaPagamento === "Dinheiro" ? "0.00" : parseFloat(valor).toFixed(2);
         let destinoCompleto = enderecoDetalhado ? `${bairroSelecionado} - ${enderecoDetalhado}` : bairroSelecionado;
 
-        listaEntregas.push({ destino: destinoCompleto, valor: parseFloat(valor).toFixed(2) });
+        listaEntregas.push({ destino: destinoCompleto, valor: valorFinal });
       }
 
       let agora = new Date();
@@ -346,8 +372,18 @@
 
       let totalGeral = 0;
       entregas.forEach((e, i) => {
-        texto += `${i + 1}. ${e.destino} - R$ ${e.valor}\n`;
-        totalGeral += parseFloat(e.valor);
+        let selectEl = document.querySelectorAll(".select-destino")[i];
+        let opt = selectEl ? selectEl.options[selectEl.selectedIndex] : null;
+        let valorTabela = opt ? parseFloat(opt.getAttribute("data-valor") || "0") : 0;
+
+        if (geral.formaPagamento === "Dinheiro") {
+          texto += `${i + 1}. ${e.destino} - R$ ${valorTabela.toFixed(2)} (Acerto: R$ ${valorTabela.toFixed(2)} - R$ ${valorTabela.toFixed(2)} = R$ 0,00)\n`;
+          totalGeral += 0;
+        } else {
+          let valZap = parseFloat(e.valor);
+          texto += `${i + 1}. ${e.destino} - R$ ${valZap.toFixed(2)}\n`;
+          totalGeral += valZap;
+        }
       });
 
       texto += `\n💰 *Total da Corrida:* R$ ${totalGeral.toFixed(2)}`;
@@ -361,6 +397,7 @@
       document.getElementById("cliente").value = "";
       document.getElementById("retirada").value = "";
       document.getElementById("selectMotoboy").selectedIndex = 0;
+      document.getElementById("formaPagamento").selectedIndex = 0;
       document.getElementById("listaDestinos").innerHTML = "";
       adicionarCampoDestino();
 
@@ -415,7 +452,7 @@
       let filtrados = historicoGlobal.filter(item => {
         let matchMotoboy = !motoboyFiltro || item.motoboy === motoboyFiltro;
         let matchData = true;
-  
+
         if (dtInicio || dtFim) {
           let p = item.data.split('/');
           let dataIso = `${p[2]}-${p[1]}-${p[0]}`;
@@ -427,9 +464,9 @@
 
       atualizarInterfaceHistorico(filtrados);
       atualizarGrafico(filtrados, motoboyFiltro);
-    
+  
       document.getElementById("blocoEnvioFechamento").style.display = motoboyFiltro ? "block" : "none";
-     
+    
       if (motoboyFiltro) {
         atualizarLinkFechamento(filtrados, motoboyFiltro, dtInicio, dtFim);
       }
@@ -441,7 +478,8 @@
       let soma = 0;
 
       lista.forEach(item => {
-        soma += item.valor;
+        let valorExibido = item.formaPagamento === "Dinheiro" ? 0 : item.valor;
+        soma += valorExibido;
 
         let tr = document.createElement("tr");
         tr.innerHTML = `
@@ -451,7 +489,7 @@
           <td>${item.retirada}</td>
           <td>${item.destino}</td>
           <td><b>${item.motoboy}</b></td>
-          <td>R$ ${item.valor.toFixed(2)}</td>
+          <td>R$ ${valorExibido.toFixed(2)}</td>
           <td>${item.formaPagamento}</td>
           <td class="text-center">
             <button class="btn btn-outline-danger btn-sm" onclick="excluirCorrida(${item.linhaPlanilha})" title="Apagar esta corrida">🗑️</button>
@@ -497,7 +535,8 @@
         let totaisPorMotoboy = {};
         lista.forEach(item => {
           let m = item.motoboy || "Desconhecido";
-          totaisPorMotoboy[m] = (totaisPorMotoboy[m] || 0) + item.valor;
+          let val = item.formaPagamento === "Dinheiro" ? 0 : item.valor;
+          totaisPorMotoboy[m] = (totaisPorMotoboy[m] || 0) + val;
         });
         rotulos = Object.keys(totaisPorMotoboy);
         valores = Object.values(totaisPorMotoboy);
@@ -505,7 +544,8 @@
         let totaisPorData = {};
         lista.forEach(item => {
           let d = item.data;
-          totaisPorData[d] = (totaisPorData[d] || 0) + item.valor;
+          let val = item.formaPagamento === "Dinheiro" ? 0 : item.valor;
+          totaisPorData[d] = (totaisPorData[d] || 0) + val;
         });
         rotulos = Object.keys(totaisPorData);
         valores = Object.values(totaisPorData);
@@ -557,10 +597,11 @@
 
       let totalGeral = 0;
       filtrados.forEach((item, index) => {
+        let valFechamento = item.formaPagamento === "Dinheiro" ? 0 : item.valor;
         texto += `${index + 1}. Data: ${item.data} (${item.hora})\n`;
         texto += `   🏢 ${item.cliente} ➡️ ${item.destino}\n`;
-        texto += `   💵 R$ ${item.valor.toFixed(2)} [${item.formaPagamento}]\n\n`;
-        totalGeral += item.valor;
+        texto += `   💵 R$ ${valFechamento.toFixed(2)} [${item.formaPagamento}]\n\n`;
+        totalGeral += valFechamento;
       });
 
       texto += `----------------------------------\n`;
@@ -568,8 +609,6 @@
       texto += `_Qualquer dúvida, estou à disposição!_`;
 
       let encoded = encodeURIComponent(texto);
-     
-      // Abre o WhatsApp livre para você selecionar o contato na lista
       let linkZap = `https://wa.me/?text=${encoded}`;
 
       document.getElementById("linkEnvioFechamento").href = linkZap;
