@@ -363,12 +363,15 @@
 
     function prepararBotaoWhatsApp(geral, entregas) {
       let fone = whatsappMotoboySelecionado.replace(/\D/g, '');
-      let texto = `*NOVO PEDIDO DE ENTREGA* 🛵\n\n`;
+     
+      let texto = `*NOVO PEDIDO DE ENTREGA* 🛵\n`;
+      texto += `━━━━━━━━━━━━━━━━━━━━━\n`;
       texto += `👤 *Cliente:* ${geral.cliente}\n`;
       texto += `📍 *Retirada:* ${geral.retirada}\n`;
       texto += `💳 *Pagamento:* ${geral.formaPagamento}\n`;
-      texto += `📅 🕒 *Data e Hora:* ${geral.data} às ${geral.hora}\n\n`;
-      texto += `📌 *Destinos:* \n\n`;
+      texto += `📅 🕒 *Data/Hora:* ${geral.data} às ${geral.hora}\n`;
+      texto += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      texto += `📌 *DESTINOS E ENTREGAS:*\n\n`;
 
       let totalGeral = 0;
       entregas.forEach((e, i) => {
@@ -376,19 +379,22 @@
         let opt = selectEl ? selectEl.options[selectEl.selectedIndex] : null;
         let valorTabela = opt ? parseFloat(opt.getAttribute("data-valor") || "0") : 0;
 
+        texto += `*Entrega #${i + 1}*\n`;
+        texto += `🎯 *Local:* ${e.destino}\n`;
+
         if (geral.formaPagamento === "Dinheiro") {
-          texto += `${i + 1}. *Destino:* ${e.destino}\n`;
-          texto += `   💵 *Valor:* R$ ${valorTabela.toFixed(2)} (Acerto)\n\n`;
+          texto += `💵 *Valor:* R$ ${valorTabela.toFixed(2)} (Acerto)\n`;
           totalGeral += 0;
         } else {
           let valZap = parseFloat(e.valor);
-          texto += `${i + 1}. *Destino:* ${e.destino}\n`;
-          texto += `   💵 *Valor:* R$ ${valZap.toFixed(2)}\n\n`;
+          texto += `💵 *Valor:* R$ ${valZap.toFixed(2)}\n`;
           totalGeral += valZap;
         }
+        texto += `-------------------------------------\n\n`;
       });
 
-      texto += `💰 *Total da Corrida:* R$ ${totalGeral.toFixed(2)}`;
+      texto += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      texto += `💰 *TOTAL DA CORRIDA: R$ ${totalGeral.toFixed(2)}*`;
 
       let encoded = encodeURIComponent(texto);
       let linkZap = fone ? `https://wa.me/55${fone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
@@ -595,25 +601,28 @@
     function atualizarLinkFechamento(filtrados, motoboyFiltro, dtInicio, dtFim) {
       if (filtrados.length === 0) return;
 
-      let texto = `*RESUMO DE FECHAMENTO DE CORRIDAS*\n\n`;
+      let texto = `*RESUMO DE FECHAMENTO DE CORRIDAS*\n`;
+      texto += `━━━━━━━━━━━━━━━━━━━━━\n`;
       texto += `👤 *Motoboy:* ${motoboyFiltro}\n`;
       if (dtInicio && dtFim) {
         texto += `📅 *Período:* ${dtInicio.split('-').reverse().join('/')} até ${dtFim.split('-').reverse().join('/')}\n`;
       }
-      texto += `----------------------------------\n`;
-      texto += `*Suas Entregas Realizadas:*\n\n`;
+      texto += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      texto += `*ENTREGAS REALIZADAS:*\n\n`;
 
       let totalGeral = 0;
       filtrados.forEach((item, index) => {
         let valFechamento = item.formaPagamento === "Dinheiro" ? 0 : item.valor;
-        texto += `${index + 1}. *Data:* ${item.data} (${item.hora})\n`;
-        texto += `   🏢 *Cliente:* ${item.cliente}\n`;
-        texto += `   🎯 *Destino:* ${item.destino}\n`;
-        texto += `   💵 *Valor:* R$ ${valFechamento.toFixed(2)} [${item.formaPagamento}]\n\n`;
+        texto += `*Item #${index + 1}*\n`;
+        texto += `📅 *Data:* ${item.data} (${item.hora})\n`;
+        texto += `🏢 *Cliente:* ${item.cliente}\n`;
+        texto += `🎯 *Destino:* ${item.destino}\n`;
+        texto += `💵 *Valor:* R$ ${valFechamento.toFixed(2)} [${item.formaPagamento}]\n`;
+        texto += `-------------------------------------\n\n`;
         totalGeral += valFechamento;
       });
 
-      texto += `----------------------------------\n`;
+      texto += `━━━━━━━━━━━━━━━━━━━━━\n`;
       texto += `💰 *TOTAL A RECEBER: R$ ${totalGeral.toFixed(2)}*\n`;
       texto += `_Qualquer dúvida, estou à disposição!_`;
 
